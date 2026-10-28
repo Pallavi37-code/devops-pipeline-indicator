@@ -23,4 +23,21 @@ jobs:
         run: python app.py
 
       - name: Run automated tests
+        id: tests
         run: python -m unittest discover -s tests -v
+
+      - name: Send pipeline status to AWS
+        if: always()
+        env:
+          AWS_API_URL: ${{ secrets.AWS_API_URL }}
+          TEST_RESULT: ${{ steps.tests.outcome }}
+        run: |
+          if [ "$TEST_RESULT" = "success" ]; then
+            STATUS="SUCCESS"
+          else
+            STATUS="FAILURE"
+          fi
+
+          curl -X POST "$AWS_API_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\":\"$STATUS\"}"
